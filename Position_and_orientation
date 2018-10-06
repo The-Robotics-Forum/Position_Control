@@ -1,0 +1,163 @@
+/*    ***** Code for position and orientation of the 3wheel chassis using Nusta Encoder *****     */
+/*  TO BE IMPLEMENTED ON 3WHEEL ENCODER CHASSIS   */
+#define interrupt1 2                                               //The Interrupt pins of Arduino Mega are 2 3 18 19 20 21
+#define channelB_1 3
+
+#define interrupt2 18
+#define channelB_2 19
+
+#define interrupt3 20
+#define channelB_3 21
+
+/*    IMPORTANT : 1 and 2 are Encoders of forward wheel and 3 is the enocoder of back wheel
+ *     
+ *     ***VARIABLE MEANINGS***
+ *     theta    - final orientation of the chassis
+ *     phi      - initial angle of the chassis
+ *     counts   - Counts the number of times encoder passed 600 pulses
+ *     pulses   - Stores incremental pulses by Encoder     IMPORTANT : RESTRICTED IN BETWEEN 0 - 600
+ *     dia_wheel- Diameter of the Chassis wheel = 152mm
+ *     rad_bot  - Distance between center of bot and wheel center = 520mm
+*/
+volatile int theta = 0 , phi = 0 , pulse1 = 0 , pulse2=0 , pulse3=0 , count1= 0, count2=0,count3=0 ;          
+const int dia_wheel = 152 , rad_bot = 520;                             
+float x = 0 , y = 0;
+const float pi = 3.14159;
+
+void setup() 
+{
+  pinMode(interrupt1,INPUT);
+  pinMode(channelB_1,INPUT);
+  
+  pinMode(interrupt2,INPUT);
+  pinMode(channelB_2,INPUT);
+  
+  pinMode(interrupt3,INPUT);
+  pinMode(channelB_3,INPUT);
+  
+  attachInterrupt(interrupt1 , encoder1 ,RISING);
+  attachInterrupt(interrupt2 , encoder2 ,RISING);
+  attachInterrupt(interrupt3 , encoder3 ,RISING); 
+
+  Serial.begin(9600);
+}
+
+void loop() 
+{
+  /*      ***** Y-COORDINATE *****      */
+  if(count1>=0 || count2>=0)
+  {
+    if(count1>count2)
+    {
+      y = 600 * count1 + (pi*dia_wheel*(pulse1-pulse2)/(600 * cos(60))); 
+     }
+    else
+    {
+      y = 600 * count2 + (pi*dia_wheel*(pulse2-pulse1)/(600 * cos(60))); 
+      }
+  }    
+  else
+  {
+        if(count1>count2)
+    {
+      y = 600 * --count1 + (pi*dia_wheel*(pulse1-pulse2)/(600 * cos(60))); 
+      
+     }
+    else
+    {
+      y = 600 * --count2 + (pi*dia_wheel*(pulse2-pulse1)/(600 * cos(60))); 
+      }
+    } 
+    
+  /*      ***** X-COORDINATE *****      */
+  if(count3>=0)
+    x=600*count3+(pi*dia_wheel*pulse3/600);
+  else
+    x=600*--count3+(pi*dia_wheel*pulse3/600);
+
+  Serial.println(x);                                            //Print the x-coordinate
+  Serial.print("\t");
+  Serial.print(y);                                              //Print the y-coordinate
+  Serial.print("\t");
+
+  Serial.print(orientation());    
+}
+
+/*      ***** ORIENTATION OF THE CHASSIS *****      */
+float orientation()
+{
+  phi = theta ;
+
+  theta = (180/pi)*(asin(x/rad_bot) + phi);
+  
+  return theta;
+  
+  }
+
+
+/*                    ***** INTERRUTS FOR COUNTING THE PULSES FROM 3 ENCODERS *****                     */
+void encoder1()
+{
+  if (digitalRead(channelB_1)==LOW)
+  {
+    pulse1++;
+    if (pulse1 > 600)
+    {
+      pulse1 = pulse1 - 600;                         
+      count1++;
+    }
+  }
+  else if (digitalRead(channelB_1)==HIGH)
+  {
+    pulse1--;
+    if (pulse1 < 0)
+    {
+      pulse1 = 600 + pulse1;                          
+      count1--;
+    }
+  }
+}
+
+void encoder2()
+{
+  if (digitalRead(channelB_2)==LOW)
+  {
+    pulse2++;
+    if (pulse2 > 600)
+    {
+      pulse2 = pulse2 - 600;                           
+      count2++;
+    }
+  }
+  else if (digitalRead(channelB_2)==HIGH)
+  {
+    pulse2--;
+    if (pulse2 < 0)
+    {
+      pulse2 = 600 + pulse2;                        
+      count2--;
+    }
+  }
+}
+
+void encoder3()
+{
+  if (digitalRead(channelB_3)==LOW)
+  {
+    pulse3++;
+    if (pulse3 > 600)
+    {
+      pulse3 = pulse3 - 600;                        
+      count3++;
+    }
+  }
+  else if (digitalRead(channelB_3)==HIGH)
+  {
+    pulse3--;
+    if (pulse3 < 0)
+    {
+      pulse3 = 600 + pulse3;                         
+      count3--;
+    }
+  }
+}
